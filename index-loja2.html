@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>PDV Mundo Tech - Loja 2</title>
+
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <link rel="stylesheet" href="modulos/importacao-lote/importacao-lote.css">
+
+    <link rel="icon" type="image/x-icon" href="icon.ico">
+</head>
+
+<body>
+    <nav class="menu-topo">
+        <button data-page="vendas">🛒 Vendas</button>
+        <button data-page="precos">💲 Consultar Preços</button>
+        <button data-page="ordem">📝 Ordem de Serviços</button>
+        <button data-page="novo-produto">🆕 Novo Produto</button>
+        <button data-page="relatorios">📊 Relatórios</button>
+        <button data-page="alertas">🚨 Alertas <span id="contadorAlertas" class="contador-alerta">0</span></button>
+        <button data-page="os-alertas">🔧 Pendências OS <span id="contadorOSPendencias" class="contador-alerta">0</span></button>
+    </nav>
+
+    <div class="page-container">
+
+    <div id="pagina-vendas" class="page active">
+        
+        <!-- Busca Centralizada -->
+        <div class="search-box-centralizada">
+        <input type="text" id="searchInput" placeholder="Buscar produto por nome ou código..." />
+        <button id="searchBtn"><i class="fas fa-search"></i> Buscar</button>
+        <div id="sugestoes" class="autocomplete-lista"></div>
+        </div>
+
+        <!-- Alerta do Carrinho -->
+        <div id="alertaCarrinho" class="alerta-carrinho"></div>
+
+        <main class="layout-pdv">
+
+        <!-- Resultados de Busca -->
+        <section id="result" class="result"></section>
+
+        <!-- Animação Lottie e Mensagem -->
+        <div id="lottieEmptyCartWrapper"
+            style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 480px; padding-top: 40px; opacity: 0; animation: fadeIn 1s forwards;">
+            <div id="lottieEmptyCart" style="width: 480px; max-width: 90%;"></div>
+            <h4 style="margin-top: 30px; font-size: 1.3rem; color: #333; text-align: center; font-weight: 600;">
+            Nenhum item no carrinho
+            </h4>
+            <p style="font-size: 1rem; color: #777; text-align: center; max-width: 400px;">
+            Use a busca acima para adicionar produtos e iniciar uma nova venda!
+            </p>
+        </div>
+
+        <!-- Estoque entre lojas -->
+        <section class="painel-lojas">
+            <h2>Visualização de Estoque entre Lojas</h2>
+            <div id="painelCapinhas"></div>
+        </section>
+
+        <!-- Carrinho -->
+        <aside id="carrinhoSidebar" class="carrinho-lateral">
+            <h2>Carrinho</h2>
+            <div id="carrinho"></div>
+            <div class="total-carrinho" style="padding: 10px; font-weight: bold;">
+            Total: <strong id="valorTotalCarrinho">R$ 0,00</strong>
+            </div>
+        </aside>
+        </main>
+    </div>
+
+        <div id="pagina-novo-produto" class="page">
+            <div class="container mt-5 p-4 border rounded bg-white shadow-lg" style="max-width: 900px;">
+                <h2 class="mb-4 text-dark d-flex align-items-center">
+                    <i class="fas fa-plus-circle mr-2"></i>Cadastro de Novo Produto
+                </h2>
+
+                <section class="mb-5">
+                    <h5 class="text-primary mb-3"><i class="fas fa-file-import"></i> Importar Produtos via XML da Nota Fiscal</h5>
+                    <div class="form-group">
+                        <input type="file" id="xmlUpload" accept=".xml" class="form-control mb-3">
+                        <button type="button" class="btn btn-primary w-100" onclick="processarXML()">
+                            📂 Carregar Produtos do XML
+                        </button>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-6 mb-2">
+                            <button id="btnBuscarImagensTodos" class="btn btn-info w-100" onclick="buscarImagensParaTodos()">
+                                🔍 Buscar Imagem para Todos os Produtos
+                            </button>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <button id="btnCadastrarTodos" class="btn btn-success w-100" onclick="cadastrarTodosProdutosXML()">
+                                🚀 Cadastrar Todos os Produtos da Nota
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <div id="listaProdutosXML" class="mt-4"></div>
+                <hr>
+
+                <section>
+                    <h5 class="text-secondary mb-3"><i class="fas fa-pencil-alt"></i> Cadastro Manual</h5>
+                    <form id="novoProdutoForm" data-produto-existente-uid="">
+                        <div class="form-group">
+                            <label for="novoCodigoBarras">Código de Barras (opcional)</label>
+                            <input type="text" id="novoCodigoBarras" class="form-control" placeholder="Ex: 7891234567890">
+                            <small class="form-text text-muted">Ao preencher e sair do campo, uma sugestão será carregada.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="urlProdutoExterno">URL do Produto (alternativa)</label>
+                            <input type="text" id="urlProdutoExterno" class="form-control" placeholder="Cole a URL do produto">
+                            <button type="button" id="buscarPorURL" class="btn btn-outline-dark btn-sm w-100 mt-2">
+                                🔎 Buscar dados dessa URL
+                            </button>
+                            <small class="form-text text-muted">Ex: link do Mercado Livre, Magalu etc.</small>
+                        </div>
+
+                        <div id="produtoExistenteInfo" class="alert alert-warning mt-3 d-none">
+                            <p><strong>Produto já existe!</strong> Dados preenchidos automaticamente.</p>
+                            <p>Estoque atual: <span id="estoqueAtualProduto">0</span></p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="novoDescricao">Descrição*</label>
+                            <input type="text" id="novoDescricao" class="form-control" placeholder="Ex: Caixa de Som USB..." required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="novoPreco">Preço*</label>
+                                <input type="number" id="novoPreco" class="form-control" placeholder="Ex: 50.00" required step="0.01">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="novoEstoque">Estoque Inicial</label>
+                                <input type="number" id="novoEstoque" class="form-control" value="10">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="novoImagemBase64">Imagem (Base64)</label>
+                            <textarea id="novoImagemBase64" class="form-control" rows="3" placeholder="Cole aqui a imagem em base64 (opcional)"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="uploadImagem">Upload de Imagem (opcional)</label>
+                            <input type="file" id="uploadImagem" class="form-control-file" accept="image/*" capture="environment">
+                            <small class="form-text text-muted">A imagem será convertida para Base64 automaticamente.</small>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <p class="font-weight-bold">Pré-visualização da Imagem:</p>
+                            <img id="previewImagem" src="" alt="Prévia da imagem" class="img-thumbnail d-none" style="max-width: 220px;">
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-lg btn-block mt-4">
+                            <i class="fas fa-save"></i> Criar Produto
+                        </button>
+
+                        <div id="statusNovoProduto" class="mt-3 text-center font-weight-bold"></div>
+                    </form>
+                </section>
+            </div>
+        </div>
+
+        <div id="pagina-relatorios" class="page">
+            <div class="container mt-4">
+                <h2>📊 Relatórios de Vendas</h2>
+                <div class="form-inline mb-3">
+                    <input type="date" id="datebegin" class="form-control mr-2">
+                    <input type="date" id="dateend" class="form-control mr-2">
+                    <button id="loadReport" class="btn btn-primary">Gerar Relatório</button>
+                </div>
+                <div id="reportResult"></div>
+            </div>
+        </div>
+
+<div id="pagina-precos" class="page">
+    <div class="container text-center">
+        <h2 class="my-4">Consulta de Preços de Peças</h2>
+
+        <input type="text" id="priceSearchInput" class="form-control mb-4" placeholder="Buscar por marca ou modelo...">
+
+        <div class="price-controls-form mb-4" style="max-width: 800px; margin-left: auto; margin-right: auto;">
+            <h5 class="mb-3 text-primary font-weight-bold">
+                <i class="fas fa-edit"></i> Atualizar ou Incluir Novo Preço
+            </h5>
+            <div class="form-row-flex">
+                <div class="form-group">
+                    <label for="priceCategory">Categoria</label>
+                    <select id="priceCategory" class="custom-select">
+                        <option value="">Selecione a categoria...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="priceModelInput">Modelo <small class="text-muted">(Ex: A01 CORE)</small></label>
+                    <input type="text" id="priceModelInput" class="form-control" placeholder="Digite o modelo do aparelho">
+                </div>
+                <div class="form-group">
+                    <label for="priceValueInput">Novo Preço <small class="text-muted">(Ex: 180,00 ou '-')</small></label>
+                    <input type="text" id="priceValueInput" class="form-control" placeholder="Digite o novo preço">
+                </div>
+                <div class="form-group" style="align-self: flex-end;">
+                    <button id="priceUpdateBtn" class="btn btn-update-price w-100">
+                        <i class="fas fa-save"></i> Atualizar / Incluir Preço
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="priceLoadingMessage" class="alert alert-info d-none">
+            <i class="fas fa-spinner fa-spin"></i> Carregando preços...
+        </div>
+
+        <div class="table-responsive price-table-container">
+            <table id="priceListTable" class="table table-bordered table-striped table-hover table-sm">
+                <thead class="thead-dark">
+                    <tr>
+                        <th><i class="fas fa-tag"></i> Marca</th>
+                        <th><i class="fas fa-mobile-alt"></i> Modelo</th>
+                        <th>Frontal</th>
+                        <th>Conector</th>
+                        <th>Bateria</th>
+                        <th>Tampa</th>
+                        <th style="width: 180px;"><i class="fas fa-tools"></i> Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="7" class="text-center">Carregando...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+        <div id="pagina-alertas" class="page">
+            <h2>🚨 Alertas de Estoque</h2>
+            <div id="alertasEstoqueMinimo" class="alerta-local-container"></div>
+            <hr>
+            <h3>Lista Detalhada de Alertas</h3>
+            <div id="alertasEstoqueListagem">
+                <p>Carregando lista de alertas...</p>
+            </div>
+        </div>
+
+        <div id="pagina-ordem" class="page">
+            <h2><i class="fas fa-clipboard-list"></i> Ordem de Serviços</h2>
+
+            <div class="login-info-box alert" id="loginInfoBox"></div>
+
+            <div id="cadastroClienteWrapper" class="container-secao-os">
+                <h4><i class="fas fa-user-check"></i> 1. Buscar ou Cadastrar Cliente</h4>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="cliCpf">CPF</label>
+                        <input type="text" id="cliCpf" placeholder="Digite o CPF e saia do campo..." class="form-control" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="cliNome">Nome completo</label>
+                        <input type="text" id="cliNome" placeholder="Nome do cliente..." class="form-control" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="cliCelular">Celular</label>
+                        <input type="text" id="cliCelular" placeholder="(XX) XXXXX-XXXX" class="form-control" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="cliTelefone">Telefone</label>
+                        <input type="text" id="cliTelefone" class="form-control" placeholder="(XX) XXXX-XXXX">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="cliCep">CEP</label>
+                        <input type="text" id="cliCep" placeholder="XXXXX-XXX (Preenche endereço)" class="form-control" />
+                        <span id="cepLoading" style="display: none;"><i class="fas fa-spinner fa-spin fa-xs"></i></span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-8">
+                        <label for="cliRua">Rua</label>
+                        <input type="text" id="cliRua" class="form-control" />
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="cliNumero">Número</label>
+                        <input type="text" id="cliNumero" class="form-control" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="cliComplemento">Complemento</label>
+                        <input type="text" id="cliComplemento" class="form-control" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="cliBairro">Bairro</label>
+                        <input type="text" id="cliBairro" class="form-control" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="cliCidade">Cidade</label>
+                        <input type="text" id="cliCidade" class="form-control" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="cliEstado">Estado</label>
+                        <input type="text" id="cliEstado" class="form-control" />
+                    </div>
+                </div>
+                <div id="statusCadastroCliente" class="mt-3 text-center font-weight-bold"></div>
+                <button id="btnConfirmarClienteIniciarOS" class="btn btn-primary mt-3 w-100">
+                    <i class="fas fa-arrow-right"></i> Confirmar Cliente e Iniciar OS
+                    <span id="clienteLoadingSpinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none; margin-left: 5px;"></span>
+                </button>
+            </div>
+
+            <div id="lista-os-app">
+                <div class="container-secao-os">
+                    <h4>📋 Lista de Ordens de Serviço do Cliente Selecionado</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped tabela-os">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;">N° OS</th>
+                                    <th style="width: 140px;">Cliente</th>
+                                    <th style="width: 100px;">Status</th>
+                                    <th style="width: 180px;">Modelo</th>
+                                    <th style="width: 100px;">Data Inicial</th>
+                                    <th style="width: 120px;">Data Faturamento</th>
+                                    <th style="width: 90px;">Valor</th>
+                                    <th style="width: 120px;">Funcionário OS</th>
+                                    <th style="width: 110px;">Data/Hora OS</th>
+                                    <th style="width: 120px;">Funcionário Faturou</th>
+                                    <th style="width: 130px;">Data/Hora Faturamento</th>
+                                    <th style="width: 280px;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="os in ordens" :key="os.idOs">
+                                    <td>{{ os.idOs }}</td>
+                                    <td>{{ formatarNome(os.nomeCliente) }}</td>
+                                    <td><span :class="['badge', statusClasse(os.status)]">{{ os.status }}</span></td>
+                                    <td>{{ limparDescricao(os.descricaoProduto) }}</td>
+                                    <td>{{ formatarData(os.dataInicial) }}</td>
+                                    <td>{{ formatarDataHoraMais3(os.data_faturamento) }}</td>
+                                    <td>{{ formatarMoeda(os.valorTotal) }}</td>
+                                    <td>
+                                        <span v-if="os.atendente_nome" class="badge badge-primary">{{ os.atendente_nome }}</span>
+                                        <span v-else>---</span>
+                                    </td>
+                                    <td>{{ formatarDataHora(os.data_hora_criacao) }}</td>
+                                    <td>
+                                        <span v-if="os.faturado_por_nome" class="badge badge-secondary">{{ os.faturado_por_nome }}</span>
+                                        <span v-else>---</span>
+                                    </td>
+                                    <td>{{ formatarDataHoraMais3(os.data_faturamento) }}</td>
+                                    <td class="actions-cell">
+                                        <div class="btn-group action-buttons-group" role="group">
+                                            <button class="btn btn-primary btn-sm btn-imprimir" @click="imprimir(os.idOs)">Imprimir</button>
+                                            <button class="btn btn-warning btn-sm" @click="editarOS(os)">✏️ Editar</button>
+                                            <button class="btn btn-success btn-sm btn-faturar" @click="faturar(os)">Faturar</button>
+                                            <button class="btn btn-danger btn-sm btn-cancelar" @click="cancelar(os.idOs)">Cancelar</button>
+                                            <button class="btn btn-warning btn-sm btn-retirada" @click="abrirTermoRetirada(os)">Retirada</button>
+                                            <button class="btn btn-secondary btn-sm btn-retorno" @click="abrirModalRetorno(os)">Retorno</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="ordens.length === 0">
+                                    <td colspan="12" class="text-center">Nenhuma OS encontrada para este cliente.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Modal de Edição de OS -->
+                <div class="modal fade" id="modalEditarOs" tabindex="-1" role="dialog" aria-labelledby="modalEditarOsLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning text-white">
+                                <h5 class="modal-title" id="modalEditarOsLabel">✏️ Editar Ordem de Serviço</h5>
+                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">
+                                    <span aria-hidden="true">×</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <form @submit.prevent="salvarEdicaoOS">
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6">
+                                            <label>Descrição do Produto</label>
+                                            <input type="text" class="form-control" v-model="edicao.descricaoProduto" required />
+                                        </div>
+                                        <div class="form-group col-md-6">
+                                            <label>Defeito</label>
+                                            <input type="text" class="form-control" v-model="edicao.defeito" />
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-4">
+                                            <label>Status</label>
+                                            <select class="form-control" v-model="edicao.status">
+                                                <option>Em Andamento</option>
+                                                <option>Orçamento</option>
+                                                <option>Aguardando Aprovação</option>
+                                                <option>Faturado</option>
+                                                <option>Cancelado</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-4">
+                                            <label>Valor Total (R$)</label>
+                                            <input type="number" step="0.01" class="form-control" v-model="edicao.valorTotal" />
+                                        </div>
+                                        <div class="form-group col-md-4">
+                                            <label>Data Inicial</label>
+                                            <input type="date" class="form-control" v-model="edicao.dataInicial" />
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6">
+                                            <label>IMEI 1</label>
+                                            <input type="text" class="form-control" v-model="edicao.imei1" />
+                                        </div>
+                                        <div class="form-group col-md-6">
+                                            <label>IMEI 2</label>
+                                            <input type="text" class="form-control" v-model="edicao.imei2" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Serviços Adicionados</label>
+                                        <div v-for="(s, i) in edicao.servicos" :key="i" class="form-row mb-2 align-items-start position-relative">
+                                            <div class="col position-relative">
+                                                <input type="text" class="form-control" v-model="s.nome" placeholder="Nome do serviço" @input="buscarServico(i)" @focus="focusedServico = i" @blur="ocultarSugestoesComAtraso" autocomplete="off" />
+                                                <ul v-if="focusedServico === i && sugestoesServicos.length > 0" class="list-group position-absolute w-100 zindex-dropdown" style="z-index: 9999; max-height: 150px; overflow-y: auto;">
+                                                    <li class="list-group-item list-group-item-action" v-for="serv in sugestoesServicos" @mousedown.prevent="selecionarServico(i, serv)">
+                                                        {{ serv.nome }} - R$ {{ parseFloat(serv.preco).toFixed(2) }}
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-2">
+                                                <input type="number" class="form-control" v-model.number="s.quantidade" min="1" placeholder="Qtd" />
+                                            </div>
+                                            <div class="col-3">
+                                                <input type="number" class="form-control" v-model.number="s.valor" step="0.01" placeholder="Valor" />
+                                            </div>
+                                            <div class="col-1">
+                                                <button @click.prevent="removerServico(i)" class="btn btn-danger btn-block"><i class="fa fa-trash"></i></button>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" @click="adicionarServico">
+                                            + Adicionar Serviço
+                                        </button>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Senha do Supervisor <small class="text-muted">(ou Senha do Supervisor)</small></label>
+                                        <input type="password" class="form-control" v-model="senhaEdicao" required />
+                                    </div>
+                                    <div v-if="erroEdicao" class="alert alert-danger mt-2">{{ erroEdicao }}</div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                                        <button type="submit" class="btn btn-warning">Salvar Alterações</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Faturar OS -->
+                <div class="modal fade" id="faturarModal" tabindex="-1" role="dialog" aria-labelledby="faturarModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title" id="faturarModalLabel">Faturar OS</h5>
+                                <button type="button" class="close text-white" @click="fecharModalFaturar" aria-label="Fechar">
+                                    <span aria-hidden="true">×</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label>Descrição</label>
+                                    <input type="text" class="form-control" v-model="pagamentoDescricao" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Cliente</label>
+                                    <input type="text" class="form-control" v-model="pagamentoCliente" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Valor*</label>
+                                    <input type="number" class="form-control" v-model="pagamentoValor">
+                                </div>
+                                <div class="form-group">
+                                    <label>Valor com Desconto</label>
+                                    <input type="number" class="form-control" v-model="pagamentoDesconto">
+                                </div>
+                                <div class="form-group">
+                                    <label>Data Entrada</label>
+                                    <input type="date" class="form-control" v-model="pagamentoDataEntrada">
+                                </div>
+                                <div class="form-group">
+                                    <label>Data Recebimento</label>
+                                    <input type="date" class="form-control" v-model="pagamentoDataRecebimento">
+                                </div>
+                                <div class="form-group">
+                                    <label>Forma Pagto (Adicionar Novo)</label>
+                                    <select class="form-control" v-model="pagamentoFormaAtual">
+                                        <option>Dinheiro</option>
+                                        <option>Cartão Crédito</option>
+                                        <option>Cartão Débito</option>
+                                        <option>Pix</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Senha do Funcionário</label>
+                                    <input type="password" class="form-control" v-model="senhaFaturamento" placeholder="Digite a senha para confirmar faturamento">
+                                </div>
+                                <button class="btn btn-sm btn-secondary mb-2" @click="adicionarPagamento">
+                                    ➕ Adicionar Pagamento (Valor atual)
+                                </button>
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center" v-for="(pg, index) in pagamentosLista" :key="index">
+                                        {{ pg.forma }} - {{ formatarMoeda(pg.valor) }}
+                                        <button class="btn btn-danger btn-sm" @click="removerPagamento(index)">🗑️</button>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" @click="fecharModalFaturar">Cancelar</button>
+                                <button class="btn btn-success" @click="faturarConfirmado" :disabled="faturando">
+                                    💰 {{ faturando ? 'Faturando...' : 'Faturar' }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Retorno -->
+                <div class="modal fade" id="modalRetorno" tabindex="-1" role="dialog" aria-labelledby="retornoModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-info text-white">
+                                <h5 class="modal-title" id="retornoModalLabel">📋 Registrar Retorno</h5>
+                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">
+                                    <span aria-hidden="true">×</span>
+                                </button>
+                            </div>
+                            <div class="modal-body" v-if="osSelecionada">
+                                <ul class="list-group mb-3">
+                                    <li class="list-group-item"><strong>OS Nº:</strong> {{ osSelecionada.idOs }}</li>
+                                    <li class="list-group-item"><strong>Cliente:</strong> {{ formatarNome(osSelecionada.nomeCliente) }}</li>
+                                    <li class="list-group-item"><strong>Equipamento:</strong> {{ limparDescricao(osSelecionada.descricaoProduto) }}</li>
+                                </ul>
+                                <div class="form-group">
+                                    <label><strong>Relato do Cliente *</strong></label>
+                                    <textarea v-model="retornoDescricao" class="form-control" placeholder="Descreva o problema relatado..." rows="3" required></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label><strong>Senha do Funcionário *</strong></label>
+                                    <input type="password" v-model="senhaRetorno" class="form-control" placeholder="Digite a senha para registrar o retorno" required />
+                                </div>
+                            </div>
+                            <div class="modal-body text-center text-muted" v-else>
+                                Carregando dados da ordem de serviço...
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                                <button class="btn btn-success" @click="confirmarRetorno">✅ Confirmar e Imprimir</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Retirada -->
+                <div class="modal fade" id="retiradaModal" tabindex="-1" role="dialog" aria-labelledby="retiradaModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning text-dark">
+                                <h5 class="modal-title" id="retiradaModalLabel">Autorização de Retirada</h5>
+                                <button type="button" class="close" @click="fecharModalRetirada" aria-label="Fechar">
+                                    <span aria-hidden="true">×</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <p><strong>Equipamento:</strong> {{ osSelecionada?.descricaoProduto || '---' }}</p>
+                                <p><strong>Cliente:</strong> {{ osSelecionada?.nomeCliente || '---' }}</p>
+                                <div class="form-group">
+                                    <label>Nome de quem irá retirar*</label>
+                                    <input type="text" class="form-control" v-model="retiradaNome" placeholder="Nome completo">
+                                </div>
+                                <div class="form-group">
+                                    <label>Documento (RG/CPF)*</label>
+                                    <input type="text" class="form-control" v-model="retiradaDocumento" placeholder="Digite o documento">
+                                </div>
+                                <div class="form-group">
+                                    <label>Senha do Funcionário*</label>
+                                    <input type="password" class="form-control" v-model="senhaRetirada" placeholder="Senha para autorizar retirada">
+                                </div>
+                                <div class="text-danger text-center" v-if="erroRetirada">{{ erroRetirada }}</div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" @click="fecharModalRetirada">Cancelar</button>
+                                <button class="btn btn-warning" @click="confirmarRetirada">Confirmar e Imprimir Autorização</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- Fecha div#lista-os-app -->
+
+            <div id="formOSWrapper" class="container-secao-os" style="display: none;">
+                <h4><i class="fas fa-tools"></i> 2. Detalhes da Ordem de Serviço</h4>
+                <div class="form-group">
+                    <label for="osNomeCliente">Cliente</label>
+                    <input type="text" id="osNomeCliente" class="form-control" readonly>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="descricaoProduto">Equipamento/Descrição*</label>
+                        <textarea id="descricaoProduto" class="form-control" placeholder="Ex: iPhone X Preto 64GB..." rows="3" required></textarea>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="defeitoProduto">Defeito/Serviço Solicitado*</label>
+                        <textarea id="defeitoProduto" class="form-control" placeholder="Ex: Tela quebrada, Não liga..." rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="observacoesOS">Observações (Estado do aparelho)</label>
+                    <textarea id="observacoesOS" class="form-control" placeholder="Detalhes: Arranhões, sem chip/cartão, com carregador..." rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="laudoTecnicoOS">Laudo Técnico (Opcional Inicial)</label>
+                    <textarea id="laudoTecnicoOS" class="form-control" placeholder="Diagnóstico preliminar..." rows="2"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="imei1OS">IMEI 1</label>
+                        <input type="text" id="imei1OS" class="form-control" placeholder="Digite o IMEI 1 (opcional)">
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="imei2OS">IMEI 2</label>
+                        <input type="text" id="imei2OS" class="form-control" placeholder="Digite o IMEI 2 (opcional)">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="statusOS">Status Inicial</label>
+                        <input type="text" id="statusOS" class="form-control" value="Em Andamento" readonly>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="dataInicial">Data Inicial</label>
+                        <input type="text" id="dataInicial" class="form-control" readonly>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="dataFinal">Data Final (Previsão)</label>
+                        <input type="text" id="dataFinal" class="form-control" readonly>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="garantiaOS">Garantia (dias)</label>
+                        <input type="text" id="garantiaOS" class="form-control" value="90 dias" readonly>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="termoGarantia">Termo de Garantia Padrão</label>
+                        <input type="text" id="termoGarantia" class="form-control" value="Serviço Prestado" readonly title="Termo padrão definido no sistema">
+                    </div>
+                </div>
+                <hr>
+                <h5><i class="fas fa-plus-circle"></i> Adicionar Serviços / Produtos</h5>
+                <div class="form-row align-items-end">
+                    <div class="form-group col-md-5" style="position: relative;">
+                        <label for="osServicoInput">Serviço/Produto</label>
+                        <input type="text" id="osServicoInput" class="form-control form-control-sm" placeholder="Digite para buscar...">
+                        <div id="osServicoSugestoes" class="autocomplete-lista-servicos" style="display: none;"></div>
+                        <input type="hidden" id="osServicoSelecionadoId">
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label for="osServicoQtd">Qtd.</label>
+                        <input type="number" id="osServicoQtd" class="form-control form-control-sm" value="1" min="1">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="osServicoPreco">Preço Unit. (R$)</label>
+                        <input type="number" id="osServicoPreco" class="form-control form-control-sm" placeholder="0.00" step="0.01" min="0">
+                    </div>
+                    <div class="form-group col-md-2 d-flex align-items-end">
+                        <button type="button" id="btnAddServico" class="btn btn-info btn-block btn-sm">Adicionar</button>
+                    </div>
+                </div>
+                <div class="table-responsive mt-3">
+                    <table id="osServicosTable" class="table table-sm table-striped table-bordered">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Serviço/Produto</th>
+                                <th style="width: 80px;">Qtd.</th>
+                                <th style="width: 120px;">Preço Unit.</th>
+                                <th style="width: 120px;">Subtotal</th>
+                                <th style="width: 80px;" class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">Nenhum serviço adicionado.</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="text-right font-weight-bold border-top-0">Subtotal Serviços/Produtos:</td>
+                                <td colspan="2" class="font-weight-bold border-top-0" id="osServicosSubtotal">R$ 0,00</td>
+                            </tr>
+                            <tr class="bg-light">
+                                <td colspan="3" class="text-right font-weight-bold h5">TOTAL GERAL:</td>
+                                <td colspan="2" class="font-weight-bold h5" id="osTotalGeral">R$ 0,00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <hr>
+                <div id="statusSalvarOS" class="mt-3 text-center font-weight-bold"></div>
+                <button id="salvarOS" class="btn btn-success mt-3 w-100">
+                    <i class="fas fa-save"></i> Salvar Ordem de Serviço
+                    <span id="osLoadingSpinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none; margin-left: 5px;"></span>
+                </button>
+                <button id="cancelarOS" type="button" class="btn btn-secondary mt-2 w-100">
+                    <i class="fas fa-times"></i> Cancelar / Voltar
+                </button>
+            </div>
+        </div> <!-- Fecha div#pagina-ordem -->
+
+        <div id="pagina-os-alertas" class="page">
+            <div class="container mt-4">
+                <h2><i class="fas fa-tools"></i> Pendências de Ordens de Serviço</h2>
+                <div id="novaTabelaOSWrapper">
+                    <p><i class="fas fa-spinner fa-spin"></i> Carregando pendências...</p>
+                </div>
+            </div>
+        </div> <!-- Fecha div#pagina-os-alertas -->
+
+    </div> <!-- Fecha div.page-container -->
+
+    <button id="btnAbrirModalFinalizar" class="btn-float" type="button">🛒 Finalizar Venda</button>
+
+    <div id="reciboVenda" class="recibo-lateral" style="display: none;">
+        <h2>Recibo de Venda</h2>
+        <div id="reciboConteudo"></div>
+        <div class="recibo-botoes">
+            <button id="btnGerarPDF">PDF</button>
+            <button id="btnImprimirRecibo">Imprimir</button>
+            <button id="btnReciboTermico" class="btn btn-dark">Recibo</button>
+            <button id="btnFecharRecibo">Fechar</button>
+        </div>
+    </div>
+
+    <div id="modalFinalizar" class="modal">
+        <div class="modal-venda bg-light p-4 rounded shadow" style="max-width: 400px; margin: auto; margin-top: 100px;">
+            <h4 class="mb-3"><i class="fas fa-cash-register"></i> Finalizar Venda</h4>
+            <div class="form-group">
+                <label for="formaPagamento"><strong>Forma de Pagamento</strong></label>
+                <select id="formaPagamento" class="form-control">
+                    <option value="">Selecione...</option>
+                    <option value="0">Dinheiro</option>
+                    <option value="1">Cartão Crédito</option>
+                    <option value="2">Cartão Débito</option>
+                    <option value="3">Crédito Loja</option>
+                    <option value="5">Pix</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="valorRecebido"><strong>Valor Recebido</strong> <small>(Para pagamento em dinheiro)</small></label>
+                <input type="number" id="valorRecebido" class="form-control" placeholder="0.00" step="0.01">
+            </div>
+            <div id="valorTroco" class="alert alert-info text-center mt-3" style="display: none;">
+                Troco: R$ 0,00
+            </div>
+            <div class="d-flex justify-content-between mt-4">
+                <button id="btnConfirmarVenda" class="btn btn-success w-50 mr-2"><i class="fas fa-check"></i> Confirmar</button>
+                <button id="btnCancelarVenda" class="btn btn-secondary w-50 ml-2"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="imagemModal" tabindex="-1" aria-labelledby="imagemModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imagemModalLabel">Visualizar Imagem</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body text-center">
+                    <img src="" id="imagemModalSrc" alt="Imagem Ampliada" class="img-fluid" style="max-height: 70vh;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalEditarPreco" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="modalEditarPrecoLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEditarPrecoLabel">Editar Preço</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!-- Conteúdo do modal de edição de preço aqui -->
+                    <p>Formulário de edição de preço...</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalGaleria" class="modal modal-galeria" style="display: none;">
+        <div class="modal-conteudo-galeria text-center">
+            <h5 id="nomeProdutoGaleria" class="mb-3">Produto</h5>
+            <img id="imagemAtualGaleria" src="img/placeholder.png" alt="Imagem da Galeria" style="max-width: 100%; border-radius: 6px;">
+            <div class="mt-3">
+                <button id="btnAnteriorGaleria" class="btn btn-outline-secondary mr-2">⬅️ Anterior</button>
+                <button id="btnProximaGaleria" class="btn btn-outline-secondary ml-2">Próxima ➡️</button>
+            </div>
+            <button id="botaoTransferirEstoque" class="btn btn-primary mt-3">
+                Transferir Estoque
+            </button>
+            <button id="btnFecharGaleria" class="btn btn-secondary mt-3">Fechar</button>
+        </div>
+    </div>
+
+    <!-- Scripts Essenciais (jQuery, Popper, Bootstrap) - Defer não recomendado se scripts subsequentes não deferidos dependem deles imediatamente -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    
+    <!-- Outras Bibliotecas -->
+    <script src="https://unpkg.com/medium-zoom@1.0.6/dist/medium-zoom.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js" defer></script>
+
+    <!-- Scripts da Aplicação -->
+    <script src="js/config2.js" defer></script>
+    <script src="js/estoque-alertas2.js" defer></script>
+    <script src="js/app-loja2.js" defer></script>
+    <script src="js/precos-feature2.js" defer></script>
+    <script src="js/ui-interactions2.js" defer></script>
+    <script src="js/ordem-servico2.js" defer></script>
+    <script src="js/os-lista2.js" defer></script>
+    <script src="js/alertas-os2.js" defer></script>
+    <script src="js/novo-produto2.js" defer></script>
+    <script src="js/busca-cep2.js" defer></script>
+    <script src="js/inativador-produtos2.js" defer></script>
+    <script src="js/forcar-cache2.js" defer></script>
+    <script src="js/importacao-lote2.js" defer></script>
+    <script src="js/relatorios2.js" defer></script>
+
+    <!-- Carregamento Dinâmico de Modal -->
+    <div id="container-modal-config"></div>
+    <script>
+        fetch('modal-config-alertas.html')
+            .then(res => res.text())
+            .then(html => {
+                if (document.getElementById('container-modal-config')) {
+                    document.getElementById('container-modal-config').innerHTML = html;
+                }
+            })
+            .catch(err => console.error('Erro ao carregar modal-config-alertas.html:', err));
+    </script>
+
+    <!-- Lottie.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.7.6/lottie.min.js"></script>
+    <script>
+    lottie.loadAnimation({
+        container: document.getElementById('lottieEmptyCart'),
+        renderer: 'svg',
+        loop: true,
+        autoplay: true,
+        path: 'js/Animation.json' // caminho local do seu arquivo
+    });
+    </script>
+
+    <script>
+        function atualizarEstadoCarrinho() {
+            const carrinho = document.getElementById('carrinho');
+            const wrapper = document.getElementById('lottieEmptyCartWrapper');
+            const totalCarrinho = document.getElementById('valorTotalCarrinho');
+
+            // Verifica se há conteúdo no carrinho
+            const carrinhoVazio = !carrinho || carrinho.innerHTML.trim() === '' || parseFloat(totalCarrinho?.innerText.replace('R$', '').replace(',', '.')) === 0;
+
+            // Exibe ou oculta a animação
+            if (wrapper) {
+            wrapper.style.display = carrinhoVazio ? 'flex' : 'none';
+            }
+        }
+
+        // Verificação inicial ao carregar a página
+        document.addEventListener('DOMContentLoaded', () => {
+            atualizarEstadoCarrinho();
+        });
+
+        // Verificação toda vez que o carrinho for alterado
+        const observer = new MutationObserver(atualizarEstadoCarrinho);
+        observer.observe(document.getElementById('carrinho'), { childList: true, subtree: true });
+        </script>
+
+
+</body>
+</html>
+
+
